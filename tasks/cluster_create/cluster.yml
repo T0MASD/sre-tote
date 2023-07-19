@@ -1,0 +1,81 @@
+- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
+    template_name: common/blank.md.j2
+
+- name: Get {{ env.CLUSTER_NAME }} cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster
+    command: |
+      ocm describe cluster $CLUSTER_NAME
+
+- name: Wait for {{ env.CLUSTER_NAME }} cluster to become ready
+  shell: set -o pipefail && ocm describe cluster {{ env.CLUSTER_NAME }} --json | jq -r .state
+  register: cmd_res
+  retries: 500
+  delay: 100
+  until: cmd_res.stdout == 'ready'
+  changed_when: false
+
+- name: Login to {{ env.CLUSTER_NAME }} cluster via backplane
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to {{ env.CLUSTER_NAME }} cluster via backplane
+    command: ocm-backplane login $CLUSTER_ID
+
+- name: Wait for job -l hive.openshift.io/managed="true" in openshift-monitoring
+  shell: |
+    set -o pipefail &&
+    oc get job -l hive.openshift.io/managed="true" -n openshift-monitoring -o json | jq -r '.items  | length'
+  environment: '{{ env }}'
+  register: cmd_res
+  retries: 15
+  delay: 20
+  until: cmd_res.stdout | int > 0
+  changed_when: false
+
+- name: Wait for the job osd-cluster-ready to complete
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Wait for the job osd-cluster-ready to complete
+    command: oc wait job -l hive.openshift.io/managed="true" --for=condition=complete -n openshift-monitoring --timeout=-1s --as backplane-cluster-admin
+
+- name: Get {{env.CLUSTER_NAME}} cluster nodes
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster nodes
+    ignore_errors: 1
+    command: |
+      oc get nodes -o wide &&
+      echo ---------- &&
+      oc adm top nodes
+
+- name: Get {{env.CLUSTER_NAME}} cluster machine information
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster machine information
+    ignore_errors: 1
+    command: |
+      oc get machinesets -A -o wide
+      echo ---------- &&
+      oc get machines -A -o wide
+
+- name: Get {{env.CLUSTER_NAME}} cluster operators
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster operators
+    command: |
+      oc get co
+
+- name: Get {{env.CLUSTER_NAME}} cluster upgrade
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster upgrade status
+    command: |
+      oc get upgrade -A &&
+      echo ---------- &&
+      oc get clusterversion

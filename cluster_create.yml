@@ -1,0 +1,23 @@
+- name: Cluster Create
+  gather_facts: false
+  connection: local
+  hosts: localhost
+  vars:
+    log: [] # used for storing shell command data
+    env:    # used as shell environment
+      CLUSTER_NAME: '{{ CLUSTER_NAME }}'
+      CHANNEL_GROUP: '{{ CHANNEL_GROUP | default("candidate") }}'
+      PROVIDER: '{{ PROVIDER | default("aws") }}'
+      VERSION: '{{ VERSION | default("4.12.0-rc.8-candidate") }}'
+      REGION: '{{ REGION | default("eu-north-1") }}'
+      OCM_ENVIRONMENT: '{{ OCM_ENVIRONMENT | default("staging") }}'
+  tasks:
+    - name: Cluster Context
+      block:
+        - include_tasks: tasks/cluster_create/main.yml
+      always:
+        - name: Create report
+          include_tasks: tasks/common/create_report.yml
+          vars:
+            template_file: cluster_create.md.j2
+            out_path: reports/cluster_create/{{ env.CLUSTER_NAME }}

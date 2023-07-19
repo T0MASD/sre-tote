@@ -1,0 +1,29 @@
+- name: Create cluster
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: |
+      ocm create cluster {{ env.CLUSTER_NAME }} version {{ env.VERSION | default('latest') }} \
+      provider {{ env.PROVIDER }} region {{ env.REGION }} channel-group {{ env.CHANNEL_GROUP }}
+    command: |
+      ocm create cluster $CLUSTER_NAME \
+      {%- if 'VERSION' in env.keys() %}--version $VERSION \{% endif -%}
+      --provider $PROVIDER \
+      --region $REGION \
+      --channel-group $CHANNEL_GROUP
+
+- name: Wait for {{ env.CLUSTER_NAME }} cluster to start installing
+  shell: set -o pipefail && ocm describe cluster {{ env.CLUSTER_NAME }} --json | jq -r .state
+  register: cmd_res
+  retries: 5
+  delay: 10
+  until: cmd_res.stdout == 'installing'
+  changed_when: false
+
+- name: Get {{ env.CLUSTER_NAME }} cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ env.CLUSTER_NAME }}
+    command: |
+      ocm describe cluster $CLUSTER_NAME --json
+    stdout_to_json: true
+    template_name: common/blank.md.j2
