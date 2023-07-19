@@ -23,3 +23,9 @@ Shared functionality to run shell commands, update environment variables and gen
 ansible-playbook hello_world.yml
 ```
 
+### Cluster Context
+
+```shell
+ansible-playbook cluster_context.yml -e CLUSTER=<CLUSTER_NAME|CLUSTER_ID|CLUSTER_UUID>
+```
+
