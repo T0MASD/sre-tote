@@ -1,0 +1,91 @@
+- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
+    template_name: common/blank.md.j2
+
+- name: Get {{ env.CLUSTER }} cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ env.CLUSTER }}
+    command: |
+      ocm describe cluster $CLUSTER --json
+    stdout_to_json: true
+    ignore_errors: true
+    template_name: common/blank.md.j2
+
+- name: Stop play if cluster is not found
+  meta: end_play
+  when: ('no subscriptions or clusters' in cmd.stderr)
+
+- name: Add CLUSTER_ID={{ cmd.json.id }},CLUSTER_NAME={{ cmd.json.name }},
+    HOSTED_CP={{ cmd.json.hypershift.enabled }},PRIVATELINK={{ cmd.json.aws.private_link }} to the env
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      cluster_describe: '{{ cmd.json }}'
+      CLUSTER_ID: '{{ cmd.json.id }}'
+      CLUSTER_NAME: '{{ cmd.json.name }}'
+      HOSTED_CP: '{{ cmd.json.hypershift.enabled }}'
+      PRIVATELINK: '{{ cmd.json.aws.private_link }}'
+
+- name: Get {{ env.CLUSTER_ID }} cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ env.CLUSTER_ID }}
+    command: |
+      ocm describe cluster $CLUSTER_ID
+
+- name: Get {{ env.CLUSTER_ID }} cluster service logs
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get {{ env.CLUSTER_ID }} cluster service logs
+    command: |
+      ocm get /api/service_logs/v1/cluster_logs --parameter search="cluster_id='$CLUSTER_ID'" | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
+
+- name: Get {{ env.CLUSTER_NAME }} provision shard
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: 'Get {{ env.CLUSTER_NAME }} provision shard'
+    command: |
+      ocm get /api/clusters_mgmt/v1/clusters/${CLUSTER_ID}/provision_shard
+    stdout_to_json: true
+
+- name: Update env
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      provision_shard: '{{ cmd.json }}'
+
+- name: Add service cluster name from {{ env.provision_shard.hypershift_config.server }}
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      SC_NAME: '{{env.provision_shard.hypershift_config.server.split(".")[1]}}'
+  when: env.provision_shard.hypershift_config is defined
+
+- name: Add hive name from {{ env.provision_shard.hive_config.server }}
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      HIVE_NAME: '{{env.provision_shard.hive_config.server.split(".")[1]}}'
+  when: env.provision_shard.hive_config is defined
+
+- name: Get {{ env.CLUSTER_NAME }} hypershift info
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: '{{ env.CLUSTER_NAME }} hypershift info'
+    command: |
+      ocm get /api/clusters_mgmt/v1/clusters/${CLUSTER_ID}/hypershift
+    stdout_to_json: true
+  when: env.HOSTED_CP == true
+
+- name: Add MC_NAME={{ cmd.json.management_cluster }}, HCP_NAMESPACE={{ cmd.json.hcp_namespace }} the env
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      MC_NAME: '{{ cmd.json.management_cluster }}'
+      HCP_NAMESPACE: '{{ cmd.json.hcp_namespace }}'
+  when: env.HOSTED_CP == true
