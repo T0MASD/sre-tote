@@ -23,6 +23,12 @@ Shared functionality to run shell commands, update environment variables and gen
 ansible-playbook hello_world.yml
 ```
 
+### Cluster Context
+
+```shell
+ansible-playbook cluster_context.yml -e CLUSTER=<CLUSTER_NAME|CLUSTER_ID|CLUSTER_UUID>
+```
+
 ### Cluster Create
 
 ```shell
@@ -36,4 +42,3 @@ Default parameters:
 - VERSION (*4.12.0-rc.8-candidate*)
 - REGION (*eu-north-1*)
 - OCM_ENVIRONMENT (*staging*, production, integration)
-

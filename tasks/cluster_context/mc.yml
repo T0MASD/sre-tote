@@ -1,0 +1,141 @@
+- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
+    template_name: common/blank.md.j2
+
+- name: Login to {{ env.MC_NAME }} cluster via backplane
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to {{ env.MC_NAME }} cluster via backplane
+    command: ocm-backplane login $MC_NAME
+    ignore_errors: true
+    template_name: common/blank.md.j2
+
+- name: Set managedment cluster logged in
+  set_fact:
+    mc_login: cmd.rc
+
+- name: Get hypershift operator logs containing {{env.CLUSTER_ID}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get hypershift operator logs containing {{env.CLUSTER_ID}}
+    ignore_errors: true
+    command: |
+      oc logs -n hypershift -l name=operator --since 48h | grep {{env.CLUSTER_ID}}
+  when: mc_login | int == 0
+
+- name: get projects with {{env.CLUSTER_ID}} name
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get projects with {{env.CLUSTER_ID}}
+    command: |
+      oc get project | grep $CLUSTER_ID
+  when: mc_login | int == 0
+
+- name: get {{env.HCP_NAMESPACE}} project status
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.HCP_NAMESPACE}} project status
+    command: |
+      oc get project {{env.HCP_NAMESPACE}} -o json | jq -r .status
+  when: mc_login | int == 0
+
+- name: get pods in {{env.HCP_NAMESPACE}} namespace
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get pods in {{env.HCP_NAMESPACE}} namespace
+    command: |
+      oc get po -n $HCP_NAMESPACE
+  when: mc_login | int == 0
+
+- name: warning events in {{env.HCP_NAMESPACE}} namespace
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: warning events {{env.HCP_NAMESPACE}} namespace
+    command: |
+      kubectl events -n $HCP_NAMESPACE --types=Warning
+  when: mc_login | int == 0
+
+- name: get hypershift worker nodes
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get hypershift worker nodes
+    command: |
+      oc get machinedeployment -o wide -n $HCP_NAMESPACE
+  when: mc_login | int == 0
+
+- name: get aws machines
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get aws machines
+    command: |
+      oc get awsmachines -n $HCP_NAMESPACE
+  when: mc_login | int == 0
+
+- name: get machine.cluster
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get machine.cluster
+    command: |
+      oc get machine.cluster.x-k8s.io -n $HCP_NAMESPACE
+  when: mc_login | int == 0
+
+- name: get clusters.cluster
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get clusters.cluster
+    command: |
+      oc get clusters.cluster.x-k8s.io -n $HCP_NAMESPACE
+  when: mc_login | int == 0
+
+- name: get packages
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get packages
+    command: |
+      oc get packages -n $HCP_NAMESPACE
+    ignore_errors: true
+  when: mc_login | int == 0
+
+- name: get hostedcluster status.conditions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get hostedcluster status.conditions
+    command: |
+      oc get hostedcluster -n ocm-$OCM_ENVIRONMENT-$CLUSTER_ID -o json | jq -r .items[].status.conditions
+  when: mc_login | int == 0
+
+- name: get vpcendpoints status.conditions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get vpcendpoints status.conditions
+    command: |
+      oc get vpcendpoints -n $HCP_NAMESPACE private-hcp -o json | jq -r .status.conditions
+  when: mc_login | int == 0
+
+- name: get awsendpointservices status.conditions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get awsendpointservices status.conditions
+    command: |
+      oc get awsendpointservices -n $HCP_NAMESPACE private-router -o json | jq -r .status.conditions
+  when: mc_login | int == 0
+
+- name: get control-plane-operator logs
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get control-plane-operator logs
+    command: |
+      oc logs -n $HCP_NAMESPACE -l app=control-plane-operator -c control-plane-operator --since=30m 
+  when: mc_login | int == 0
+
+- name: get kube-apiserver logs
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get kube-apiserver logs
+    command: |
+      oc logs -n $HCP_NAMESPACE -l app=kube-apiserver -c kube-apiserver --since=30m
+  when: mc_login | int == 0

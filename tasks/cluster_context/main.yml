@@ -1,0 +1,27 @@
+- name: Include cluster metadata gathering queries
+  include_tasks: gather.yml
+  when:
+    - env.CLUSTER | length > 0
+    - env.OCM_ENVIRONMENT in ['production', 'staging', 'integration']
+
+- name: Include hive queries
+  include_tasks: hive.yml
+  when: env.HIVE_NAME is defined
+
+- name: Include service cluster queries
+  include_tasks: sc.yml
+  when: env.SC_NAME | default('') | length > 0
+
+- name: Include management server queries
+  include_tasks: mc.yml
+  when: env.MC_NAME | default('') | length > 0
+
+- name: Include classic cluster queries
+  include_tasks: cluster_classic.yml
+  when:
+    env.HOSTED_CP == false
+
+- name: Include hypershift` cluster queries
+  include_tasks: cluster_hypershift.yml
+  when:
+    env.HOSTED_CP == true
