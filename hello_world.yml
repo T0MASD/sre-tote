@@ -1,0 +1,18 @@
+- name: Hello World
+  gather_facts: false
+  connection: local
+  hosts: localhost
+  vars:
+    log: [] # used for storing shell command data
+    env: {} # used as shell environment
+  tasks:
+    - name: Hello World
+      block:
+        - include_tasks: tasks/hello_world/main.yml
+      always:
+        - name: Create report
+          include_tasks: tasks/common/create_report.yml
+          vars:
+            template_file: hello_world.md.j2
+            out_path: reports/hello_world
+            # to_html: false

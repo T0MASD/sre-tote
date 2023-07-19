@@ -1,0 +1,33 @@
+- name: Set report vars
+  set_fact:
+    timestamp: "{{ lookup('pipe', 'date -u +\"%Y%m%dT%H%M%SZ\"') }}"
+    to_html: '{{ to_html | default(true) }}'
+
+- name: Ensure cluster {{ out_path }} report dir exists
+  file:
+    path: '{{ out_path }}'
+    state: directory
+    mode: 0744
+  register: report_dir
+
+- name: Create markdown report {{ timestamp }}.md from {{ template_file }} template
+  template:
+    src: templates/{{ template_file }}
+    dest: '{{ report_dir.path }}/{{ timestamp }}.md'
+    mode: 0644
+  register: markdown
+
+- name: Check for pandoc command
+  command: which pandoc
+  ignore_errors: true
+  no_log: true
+  register: which_pandoc
+
+- name: Convert markdown report to {{ markdown.dest }}.html
+  command: >
+    pandoc -f markdown -t html5 -o {{ markdown.dest }}.html {{ markdown.dest }} \
+    --css=templates/common/css/github.css \
+    --highlight-style=haddock \
+    --self-contained
+  changed_when: false
+  when: to_html and which_pandoc.rc == 0

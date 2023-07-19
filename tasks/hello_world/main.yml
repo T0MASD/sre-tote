@@ -1,0 +1,80 @@
+- name: Hello World
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Hello world
+    command: |
+      echo "hello world"
+
+- name: Hidden output
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Hello SRE
+    command: |
+      echo "My password is"
+    template_name: common/blank.md.j2
+
+- name: Update env
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Set environment to 'prod'
+    command: |
+      echo prod
+
+- name: Add ENV={{ cmd.stdout }}
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      ENV: '{{ cmd.stdout }}'
+
+- name: Show env
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get env
+    command: |
+      echo $ENV
+
+# - name: Simulate error
+#   include_tasks: tasks/common/shell.yml
+#   vars:
+#     description: simulate error
+#     command: |
+#       exit 1
+
+- name: Show failed task
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Fail task
+    command: exit 1
+    ignore_errors: true
+
+- name: Echo json string, pass it to jq and convert the output to json object
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Echo json string, pass it to jq and convert the output to json object
+    command: echo '{"status":200}' | jq -r
+    stdout_to_json: true
+
+- name: Add STATUS={{ cmd.json.status }} to the environment vars
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      STATUS: '{{ cmd.json.status }}'
+
+- name: Show $STATUS var value
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Show $STATUS environment var value
+    command: |
+      echo $STATUS
+
+- name: Emulate unpexpected error
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Emulate unpexpected error
+    command: exit 1
+
+- name: This task is not executed due to unpexpected earlier error
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: This task is not executed due to unpexpected earlier error
+    command: ls -la

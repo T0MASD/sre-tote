@@ -1,0 +1,7 @@
+```shell
+$ {{ item.cmd }}
+
+{{ item.stdout_lines | join('\n')  }}
+
+{{ item.stderr_lines | join('\n')  }}
+```

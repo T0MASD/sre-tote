@@ -1,0 +1,6 @@
+# Report for hello-world play
+{% for item in vars.log %}
+- {{ '✅' if not item.rc else '❌' }} TASK: `{{item.get('description')}}`
+{% include "templates/" + item.template_name %}
+
+{% endfor %}

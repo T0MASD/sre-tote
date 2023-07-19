@@ -1,0 +1,28 @@
+- name: "Set shell task vars"
+  set_fact:
+    _task_data:
+      description: '{{ description | default(command) }}'
+      template_name: '{{ template_name | default("common/shell.md.j2") }}'
+
+- name: "Block"
+  block:
+    - name: Run '{{ command }}' and register output in 'cmd' var
+      shell: |
+        {{ command }}
+      register: cmd
+      changed_when: false
+      ignore_errors: '{{ ignore_errors | default(false) }}'
+      environment: '{{ env | default({}) }}'
+  always:
+    - name: Add task data to cmd
+      set_fact:
+        cmd: '{{ cmd | combine(_task_data) }}'
+
+    - name: Convert stdout to json and add it to cmd
+      set_fact:
+        cmd: '{{ cmd | combine({"json": (cmd.stdout | from_json)}) }}'
+      when: stdout_to_json | default(false) is true and cmd.rc == 0
+
+    - name: Save cmd output to the log
+      set_fact:
+        log: '{{ log + [cmd] }}'
