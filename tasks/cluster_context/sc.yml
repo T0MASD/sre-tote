@@ -1,0 +1,83 @@
+- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
+    template_name: common/blank.md.j2
+
+- name: Login to {{ env.SC_NAME }} cluster via backplane
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to {{ env.SC_NAME }} cluster via backplane
+    command: ocm-backplane login $SC_NAME
+    ignore_errors: true
+    template_name: common/blank.md.j2
+
+- name: Set service cluster logged in
+  set_fact:
+    sc_login: cmd.rc
+
+- name: get {{env.HCP_NAMESPACE}} project
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.HCP_NAMESPACE}} project
+    command: |
+      oc get project | grep $CLUSTER_ID
+    ignore_errors: true
+  when: sc_login | int == 0
+
+- name: get {{env.HCP_NAMESPACE}} project
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.HCP_NAMESPACE}} project
+    command: |
+      oc get project ocm-$OCM_ENVIRONMENT-$CLUSTER_ID -o json
+    ignore_errors: true
+  when: sc_login | int == 0
+
+- name: warning events in {{env.HCP_NAMESPACE}} namespace
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: warning events {{env.HCP_NAMESPACE}} namespace
+    command: |
+      kubectl events -n ocm-$OCM_ENVIRONMENT-$CLUSTER_ID --types=Warning
+  when: sc_login | int == 0
+
+- name: get SC managedcluster .status.conditions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get SC managedcluster .status.conditions
+    command: |
+      oc get managedcluster $CLUSTER_ID -o json | jq -r .status.conditions
+  when: sc_login | int == 0
+
+- name: get {{env.MC_NAME}} manifestwork resourceStatus
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.MC_NAME}} manifestwork resourceStatus
+    command: |
+      oc get manifestwork -n ${MC_NAME} ${CLUSTER_ID} -o json | \
+      jq -r '.status.resourceStatus.manifests[]|[.resourceMeta.name,.conditions[]]'
+    ignore_errors: true
+  when: sc_login | int == 0
+
+- name: get {{env.MC_NAME}} manifestwork hosted-klusterlet resourceStatus
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.MC_NAME}} manifestwork hosted-klusterlet resourceStatus
+    command: |
+      oc get manifestwork -n ${MC_NAME} ${CLUSTER_ID}-hosted-klusterlet -o json | \
+      jq -r '.status.resourceStatus.manifests[]|[.resourceMeta.name,.conditions[]]'
+    ignore_errors: true
+  when: sc_login | int == 0
+
+- name: get {{env.MC_NAME}} manifestwork workers resourceStatus
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: get {{env.MC_NAME}} manifestwork workers resourceStatus
+    command: |
+      oc get manifestwork -n ${MC_NAME} ${CLUSTER_ID}-workers -o json | \
+      jq -r '.status.resourceStatus.manifests[].statusFeedback.values[]|[.name,.fieldValue.string]'
+    ignore_errors: true
+  when: sc_login | int == 0
