@@ -1,0 +1,47 @@
+- name: List regions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: ocm list {{ env.PROVIDER }} provider regions
+    command: |
+      ocm list regions --provider $PROVIDER
+
+- name: List channel versions
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: ocm list {{ env.CHANNEL_GROUP }} channel group versions
+    command: |
+      ocm list version --channel-group $CHANNEL_GROUP
+
+- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
+    template_name: common/blank.md.j2
+
+- name: Get {{ env.CLUSTER_NAME }} cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ env.CLUSTER_NAME }}
+    command: |
+      ocm describe cluster $CLUSTER_NAME --json
+    stdout_to_json: true
+    template_name: common/blank.md.j2
+    ignore_errors: true
+
+- name: Create cluster
+  include_tasks: create.yml
+  when: ('no subscriptions or clusters' in cmd.stderr)
+
+- name: Add CLUSTER_ID={{ cmd.json.id }} to the env
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      CLUSTER_ID: '{{ cmd.json.id }}'
+
+- name: Include hive queries
+  include_tasks: hive.yml
+
+- name: Include cluster queries
+  include_tasks: cluster.yml

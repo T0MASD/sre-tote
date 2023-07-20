@@ -1,0 +1,53 @@
+- name: Get {{ env.CLUSTER_NAME }} cluster hive name
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: '{{ env.CLUSTER_NAME }} cluster hive name'
+    command: |
+      ocm get /api/clusters_mgmt/v1/clusters/${CLUSTER_ID}/provision_shard | jq -r '.hive_config.server' | cut -d '.' -f 2
+
+- name: Add HIVE_NAME={{ cmd.stdout }} to the env
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      HIVE_NAME: '{{ cmd.stdout }}'
+
+- name: Login to ocm prod
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to ocm prod
+    command: |
+      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=production
+    template_name: common/blank.md.j2
+
+- name: Login to {{ env.CLUSTER_NAME }} cluster hive {{ env.HIVE_NAME }} via backplane
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Login to hive {{ env.HIVE_NAME }} via backplane
+    command: |
+      ocm-backplane login $HIVE_NAME
+    template_name: common/blank.md.j2
+
+# - name: Get cluster deployment in uhc-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}}
+#   include_tasks: "tasks/common/shell.yml"
+#   vars:
+#     description: Get cluster deployment in uhc-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}}
+#     command: |
+#       oc get clusterdeployment -n uhc-$OCM_ENVIRONMENT-$CLUSTER_ID
+
+- name: Wait for provisioning job in uhc-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
+  shell: |
+    set -o pipefail &&
+    oc get job -l hive.openshift.io/job-type=provision \
+    -n uhc-$OCM_ENVIRONMENT-$CLUSTER_ID -o json | jq -r '.items  | length'
+  environment: '{{ env }}'
+  register: cmd_res
+  retries: 10
+  delay: 10
+  until: cmd_res.stdout | int > 0
+  changed_when: false
+
+- name: Wait for the provision job to complete
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Wait for the provision job to complete
+    command: oc wait job --for=condition=complete -l hive.openshift.io/job-type=provision -n uhc-$OCM_ENVIRONMENT-$CLUSTER_ID  --timeout=-1s

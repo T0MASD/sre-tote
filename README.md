@@ -29,3 +29,16 @@ ansible-playbook hello_world.yml
 ansible-playbook cluster_context.yml -e CLUSTER=<CLUSTER_NAME|CLUSTER_ID|CLUSTER_UUID>
 ```
 
+### Cluster Create
+
+```shell
+ansible-playbook cluster_create.yml -e CLUSTER_NAME=<CLUSTER_NAME>
+```
+
+Default parameters:
+
+- CHANNEL_GROUP (stable, fast, *candidate*)
+- PROVIDER (*aws*, gcp)
+- VERSION (*4.12.0-rc.8-candidate*)
+- REGION (*eu-north-1*)
+- OCM_ENVIRONMENT (*staging*, production, integration)
