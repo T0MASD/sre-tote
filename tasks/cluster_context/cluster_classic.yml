@@ -154,7 +154,6 @@
     ignore_errors: true
   when: env.ETC_POD is defined
 
-
 - name: Get {{env.ETC_POD}} pod etcdctl member list
   include_tasks: tasks/common/shell.yml
   vars:
@@ -173,4 +172,3 @@
       echo oc exec -it $ETC_POD -n openshift-etcd -c etcdctl -- sh -c "etcdctl get / --prefix --keys-only | grep -v ^$"
     ignore_errors: true
   when: env.ETC_POD is defined
-

@@ -57,3 +57,14 @@
     ignore_errors: true
     command: |
       oc get certificaterequest.certman.managed.openshift.io -n uhc-$OCM_ENVIRONMENT-$CLUSTER_ID -o json | jq -r .items[].status
+    stdout_to_json: true
+
+- name: Get cluster certman operator logs
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster certman operator logs
+    ignore_errors: true
+    command: |
+      oc logs -n certman-operator -l name=certman-operator | grep {{env.CLUSTER_ID}}
+    stdout_to_json: true
+  when: cmd.json.status != 'Success'

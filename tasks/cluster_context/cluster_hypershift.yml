@@ -101,7 +101,7 @@
 - name: Verify {{env.CLUSTER_NAME}} cluster webhook config
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Verify {{env.CLUSTER_NAME}} cluster webhook config url contains {{env.CLUSTER_ID}} 
+    description: Verify {{env.CLUSTER_NAME}} cluster webhook config url contains {{env.CLUSTER_ID}}
     ignore_errors: true
     command: |
       oc get validatingwebhookconfiguration sre-regular-user-validation -o json | jq -r '.webhooks[].clientConfig.url' | grep {{env.CLUSTER_ID}}
