@@ -49,3 +49,11 @@
     command: |
       oc get account -n aws-account-operator -o json | jq -r \
       '.items[] | select(.spec.claimLinkNamespace=="uhc-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}}").status'
+
+- name: Get cluster certman certificaterequest
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster certman certificaterequest
+    ignore_errors: true
+    command: |
+      oc get certificaterequest.certman.managed.openshift.io -n uhc-$OCM_ENVIRONMENT-$CLUSTER_ID -o json | jq -r .items[].status
