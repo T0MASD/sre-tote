@@ -129,7 +129,7 @@
   vars:
     description: get control-plane-operator logs
     command: |
-      oc logs -n $HCP_NAMESPACE -l app=control-plane-operator -c control-plane-operator --since=30m 
+      oc logs -n $HCP_NAMESPACE -l app=control-plane-operator -c control-plane-operator --since=30m
   when: mc_login | int == 0
 
 - name: get kube-apiserver logs

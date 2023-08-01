@@ -22,6 +22,7 @@
   ignore_errors: true
   no_log: true
   register: which_pandoc
+  changed_when: false
 
 - name: Convert markdown report to {{ markdown.dest }}.html
   command: >

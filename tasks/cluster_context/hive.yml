@@ -66,5 +66,4 @@
     ignore_errors: true
     command: |
       oc logs -n certman-operator -l name=certman-operator | grep {{env.CLUSTER_ID}}
-    stdout_to_json: true
   when: cmd.json.status != 'Success'
