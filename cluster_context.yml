@@ -6,6 +6,10 @@
     log: [] # used for storing shell command data
     env:    # used as shell environment
       OCM_ENVIRONMENT: '{{OCM_ENVIRONMENT | default("staging") }}'
+      OCM_URLS:
+        production: https://api.openshift.com
+        staging: https://api.stage.openshift.com
+        integration: https://api.integration.openshift.com
       CLUSTER: '{{ CLUSTER }}'
   tasks:
     - name: Cluster Context

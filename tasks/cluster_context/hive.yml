@@ -1,9 +1,9 @@
-- name: Login to ocm prod
+- name: Set ocm config url for production
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Login to ocm prod
+    description: Set ocm config url for production
     command: |
-      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=production
+      ocm config set url {{ env.OCM_URLS["production"] }}
     template_name: common/blank.md.j2
 
 - name: Attempt login to cluster hive via backplane
