@@ -6,7 +6,7 @@
 
 - name: "Block"
   block:
-    - name: Run '{{ command }}' and register output in 'cmd' var
+    - name: Run command and register output in 'cmd' var '{{ command }}'
       shell: |
         {{ command }}
       register: cmd
