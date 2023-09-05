@@ -1,11 +1,3 @@
-- name: Set ocm config url for {{ env.OCM_ENVIRONMENT }}
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Set ocm config url for {{ env.OCM_ENVIRONMENT }}
-    command: |
-      ocm config set url {{ env.OCM_URLS[env.OCM_ENVIRONMENT] }}
-    template_name: common/blank.md.j2
-
 - name: Attempt login to cluster sc via backplane
   include_tasks: tasks/common/shell.yml
   vars:
@@ -69,11 +61,11 @@
           oc get manifestwork -n {{ env.MC_NAME }} {{ env.CLUSTER_ID }}-hosted-klusterlet -o json | \
           jq -r '.status.resourceStatus.manifests[]|[.resourceMeta.name,.conditions[]]'
 
-    - name: get {{ env.MC_NAME }} manifestwork workers resourceStatus
+    - name: Get manifestwork workers resourceStatus
       include_tasks: tasks/common/shell.yml
       vars:
-        description: get {{env.MC_NAME}} manifestwork workers resourceStatus
+        description: Manifestwork workers resourceStatus
         ignore_errors: true
         command: |
-          oc get manifestwork -n ${MC_NAME} ${CLUSTER_ID}-workers -o json | \
+          oc get manifestwork -n {{ env.MC_NAME }} {{ env.CLUSTER_ID }}-workers -o json | \
           jq -r '.status.resourceStatus.manifests[].statusFeedback.values[]|[.name,.fieldValue.string]'

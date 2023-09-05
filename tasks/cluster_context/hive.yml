@@ -1,11 +1,3 @@
-- name: Set ocm config url for production
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Set ocm config url for production
-    command: |
-      ocm config set url {{ env.OCM_URLS["production"] }}
-    template_name: common/blank.md.j2
-
 - name: Attempt login to cluster hive via backplane
   include_tasks: tasks/common/shell.yml
   vars:

@@ -1,11 +1,3 @@
-- name: Set ocm config url for {{ env.OCM_ENVIRONMENT }}
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Set ocm config url for {{ env.OCM_ENVIRONMENT }}
-    command: |
-      ocm config set url {{ env.OCM_URLS[env.OCM_ENVIRONMENT] }}
-    template_name: common/blank.md.j2
-
 - name: Attempt login to cluster sc via backplane
   include_tasks: tasks/common/shell.yml
   vars:

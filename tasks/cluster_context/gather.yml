@@ -1,12 +1,12 @@
-- name: Login to ocm {{env.OCM_ENVIRONMENT}}
+- name: Login to ocm {{ env.OCM_ENVIRONMENT }}
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Login to ocm {{env.OCM_ENVIRONMENT}}
+    description: Login to ocm {{ env.OCM_ENVIRONMENT }}
     command: |
       ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
     template_name: common/blank.md.j2
 
-- name: Get {{ env.CLUSTER }} cluster describe
+- name: Get cluster describe
   include_tasks: tasks/common/shell.yml
   vars:
     description: Describe cluster {{ env.CLUSTER }}
@@ -20,8 +20,7 @@
   meta: end_play
   when: ('no subscriptions or clusters' in cmd.stderr)
 
-- name: Add CLUSTER_ID={{ cmd.json.id }},CLUSTER_NAME={{ cmd.json.name }},
-    HOSTED_CP={{ cmd.json.hypershift.enabled }},PRIVATELINK={{ cmd.json.aws.private_link }} to the env
+- name: Update env with cluster_describe, CLUSTER_ID, CLUSTER_NAME, HOSTED_CP, PRIVATELINK
   include_tasks: tasks/common/update_env.yml
   vars:
     env_updates:
@@ -31,26 +30,27 @@
       HOSTED_CP: '{{ cmd.json.hypershift.enabled }}'
       PRIVATELINK: '{{ cmd.json.aws.private_link }}'
 
-- name: Get {{ env.CLUSTER_ID }} cluster describe
+- name: Get cluster describe
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Describe cluster {{ env.CLUSTER_ID }}
+    description: Describe cluster
     command: |
-      ocm describe cluster $CLUSTER_ID
+      ocm describe cluster {{ env.CLUSTER_ID }}
 
-- name: Get {{ env.CLUSTER_ID }} cluster service logs
+- name: Get cluster service logs
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Get {{ env.CLUSTER_ID }} cluster service logs
+    description: Get cluster service logs
     command: |
-      ocm get /api/service_logs/v1/cluster_logs --parameter search="cluster_id='$CLUSTER_ID'" | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
+      ocm get /api/service_logs/v1/cluster_logs --parameter search="cluster_id='{{ env.CLUSTER_ID }}'" \
+      | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
 
-- name: Get {{ env.CLUSTER_NAME }} provision shard
+- name: Get cluster provision shard
   include_tasks: tasks/common/shell.yml
   vars:
-    description: 'Get {{ env.CLUSTER_NAME }} provision shard'
+    description: 'Get cluster provision shard'
     command: |
-      ocm get /api/clusters_mgmt/v1/clusters/${CLUSTER_ID}/provision_shard
+      ocm get /api/clusters_mgmt/v1/clusters/{{ env.CLUSTER_ID }}/provision_shard
     stdout_to_json: true
 
 - name: Update env
@@ -63,29 +63,30 @@
   include_tasks: tasks/common/update_env.yml
   vars:
     env_updates:
-      SC_NAME: '{{env.provision_shard.hypershift_config.server.split(".")[1]}}'
+      SC_NAME: '{{ env.provision_shard.hypershift_config.server.split(".")[1] }}'
   when: env.provision_shard.hypershift_config is defined
 
 - name: Add hive name from {{ env.provision_shard.hive_config.server }}
   include_tasks: tasks/common/update_env.yml
   vars:
     env_updates:
-      HIVE_NAME: '{{env.provision_shard.hive_config.server.split(".")[1]}}'
+      HIVE_NAME: '{{ env.provision_shard.hive_config.server.split(".")[1] }}'
   when: env.provision_shard.hive_config is defined
 
-- name: Get {{ env.CLUSTER_NAME }} hypershift info
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: '{{ env.CLUSTER_NAME }} hypershift info'
-    command: |
-      ocm get /api/clusters_mgmt/v1/clusters/${CLUSTER_ID}/hypershift
-    stdout_to_json: true
-  when: env.HOSTED_CP == true
+- name: "Run hypershift queries"
+  when: env.HOSTED_CP
+  block:
+    - name: Get hypershift info
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: 'Cluster hypershift info'
+        command: |
+          ocm get /api/clusters_mgmt/v1/clusters/{{ env.CLUSTER_ID }}/hypershift
+        stdout_to_json: true
 
-- name: Add MC_NAME={{ cmd.json.management_cluster }}, HCP_NAMESPACE={{ cmd.json.hcp_namespace }} the env
-  include_tasks: tasks/common/update_env.yml
-  vars:
-    env_updates:
-      MC_NAME: '{{ cmd.json.management_cluster }}'
-      HCP_NAMESPACE: '{{ cmd.json.hcp_namespace }}'
-  when: env.HOSTED_CP == true
+    - name: Update env with MC_NAME, HCP_NAMESPACE
+      include_tasks: tasks/common/update_env.yml
+      vars:
+        env_updates:
+          MC_NAME: '{{ cmd.json.management_cluster }}'
+          HCP_NAMESPACE: '{{ cmd.json.hcp_namespace }}'
