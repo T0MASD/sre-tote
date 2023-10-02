@@ -27,6 +27,7 @@
     env_updates:
       cluster_describe: '{{ cmd.json }}'
       CLUSTER_ID: '{{ cmd.json.id }}'
+      CLUSTER_UUID: '{{ cmd.json.external_id }}'
       CLUSTER_NAME: '{{ cmd.json.name }}'
       HOSTED_CP: '{{ cmd.json.hypershift.enabled }}'
       PRIVATELINK: '{{ cmd.json.aws.private_link }}'
@@ -43,7 +44,9 @@
   vars:
     description: Get {{ env.CLUSTER_ID }} cluster service logs
     command: |
-      ocm get /api/service_logs/v1/cluster_logs --parameter search="cluster_id='$CLUSTER_ID'" | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
+      ocm get /api/service_logs/v1/cluster_logs --parameter \
+      search="cluster_uuid='{{ env.CLUSTER_UUID }}' and timestamp > '$(date --iso-8601=seconds --utc -d '-10 days')'" \
+      | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
 
 - name: Get {{ env.CLUSTER_NAME }} provision shard
   include_tasks: tasks/common/shell.yml
