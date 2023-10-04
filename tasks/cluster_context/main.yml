@@ -18,10 +18,8 @@
 
 - name: Include classic cluster queries
   include_tasks: cluster_classic.yml
-  when:
-    env.HOSTED_CP == false
+  when: not env.HOSTED_CP
 
 - name: Include hypershift` cluster queries
   include_tasks: cluster_hypershift.yml
-  when:
-    env.HOSTED_CP == true
+  when: env.HOSTED_CP
