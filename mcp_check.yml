@@ -1,0 +1,20 @@
+- name: MCP Check
+  gather_facts: false
+  connection: local
+  hosts: localhost
+  vars:
+    log: [] # used for storing shell command data
+    env:    # used as shell environment
+      OCM_ENVIRONMENT: '{{OCM_ENVIRONMENT | default("staging") }}'
+      CLUSTER: '{{ CLUSTER }}'
+      STOP_NOTUPDATING: '{{ STOP_NOTUPDATING }}'
+  tasks:
+    - name: Cluster MCP Check
+      block:
+        - include_tasks: tasks/mcp_check/main.yml
+      always:
+        - name: Create report
+          include_tasks: tasks/common/create_report.yml
+          vars:
+            template_file: cluster_context.md.j2
+            out_path: reports/mcp_check/{{ env.CLUSTER }}

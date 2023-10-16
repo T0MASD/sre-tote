@@ -1,0 +1,107 @@
+- name: Get cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ env.CLUSTER }}
+    command: |
+      ocm describe cluster $CLUSTER --json
+    stdout_to_json: true
+    ignore_errors: true
+    template_name: common/blank.md.j2
+
+- name: Stop play if cluster is not found
+  meta: end_play
+  when: ('no subscriptions or clusters' in cmd.stderr)
+
+- name: Update env with cluster_describe, CLUSTER_ID, CLUSTER_NAME, HOSTED_CP, PRIVATELINK
+  include_tasks: tasks/common/update_env.yml
+  vars:
+    env_updates:
+      cluster_describe: '{{ cmd.json }}'
+      CLUSTER_ID: '{{ cmd.json.id }}'
+      CLUSTER_UUID: '{{ cmd.json.external_id }}'
+      CLUSTER_NAME: '{{ cmd.json.name }}'
+      HOSTED_CP: '{{ cmd.json.hypershift.enabled }}'
+      PRIVATELINK: '{{ cmd.json.aws.private_link }}'
+
+- name: Get cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster
+    command: |
+      ocm describe cluster {{ env.CLUSTER_ID }}
+
+- name: Get cluster service logs
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get cluster service logs
+    command: |
+      ocm get /api/service_logs/v1/cluster_logs --parameter \
+      search="cluster_uuid='{{ env.CLUSTER_UUID }}' and timestamp > '$(date --iso-8601=seconds --utc -d '-10 days')'" \
+      | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
+
+- name: Check if MachineConfigPools are updating
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: MachineConfigPool status
+    ignore_errors: true
+    command: |
+      oc get MachineConfigPools -o json \
+      | jq -r '.items[].status.conditions[] | select(.message | contains("nodes are updating")).status'
+
+- name: Stop play if MachineConfigPools are not updating and STOP_NOTUPDATING set in env
+  meta: end_play
+  when: cmd.stdout == "" and env.STOP_NOTUPDATING == "1"
+
+- name: Get nodes
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get nodes
+    command: |
+      oc get node
+
+- name: Get MUO upgrade
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster MUO upgrade status
+    command: |
+      oc get upgrade -A
+
+- name: Get cluster upgrade
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster upgrade status
+    command: |
+      oc get clusterversion
+
+- name: Get worker machine pool update status
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get worker machine pool update status
+    command: |
+      oc get MachineConfigPools worker -o json | \
+      jq -r '.status.conditions[] | select(.message | contains("nodes are updating"))'
+
+- name: Get master machine pool update status
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get master machine pool update status
+    command: |
+      oc get MachineConfigPools master -o json | \
+      jq -r '.status.conditions[] | select(.message | contains("nodes are updating"))'
+
+- name: Get machine-config-controller los
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Get machine-config-controller logs
+    command: |
+      oc logs -n openshift-machine-config-operator -l k8s-app=machine-config-controller \
+      -c machine-config-controller --since=5h | grep -i " Pool "
+    ignore_errors: true
+
+- name: Get cluster degraded operators
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster degraded operators
+    ignore_errors: true
+    command: |
+      oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
