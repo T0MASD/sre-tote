@@ -52,6 +52,11 @@
   meta: end_play
   when: cmd.stdout == "" and env.STOP_NOTUPDATING == "1"
 
+- name: Message that mcp is not updating
+  debug:
+    msg: "mcp_not_updating"
+  when: cmd.stdout == ""
+
 - name: Get nodes
   include_tasks: tasks/common/shell.yml
   vars:
@@ -97,6 +102,14 @@
       oc logs -n openshift-machine-config-operator -l k8s-app=machine-config-controller \
       -c machine-config-controller --since=5h | grep -i " Pool "
     ignore_errors: true
+
+- name: Get cluster operators
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Cluster operators
+    ignore_errors: true
+    command: |
+      oc get co
 
 - name: Get cluster degraded operators
   include_tasks: tasks/common/shell.yml
