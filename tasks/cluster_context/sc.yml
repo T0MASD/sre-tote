@@ -60,7 +60,7 @@
         ignore_errors: true
         command: |
           oc get manifestwork -n {{ env.MC_NAME }} -o json \
-          | jq -r '.items[].metadata | select ( (.labels."api.openshift.com/id"=="{{ env.CLUSTER_ID }}") or (.labels."import.open-cluster-management.io/hosted-cluster"=="{{ env.CLUSTER_ID }}") or (.labels."open-cluster-management.io/addon-namespace"=="{{ env.CLUSTER_ID }}") ) | [.creationTimestamp, .name, (.finalizers | join(",")) ]| @tsv'
+          | jq -r '.items[].metadata | select ( .name | contains("{{ env.CLUSTER_ID }}") ) | [.creationTimestamp, .name, (.finalizers | join(",")) ]| @tsv'
 
     - name: Get manifestworks for namespaces containing {{ env.CLUSTER_ID }} 
       include_tasks: tasks/common/shell.yml
