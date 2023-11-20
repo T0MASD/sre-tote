@@ -1,3 +1,12 @@
+- name: Check backplane health
+  shell: |
+    BACKPLANE_PROXY_URL=$(jq -r '."proxy-url"' $BACKPLANE_CONFIG)
+    BACKPLANE_URL=$(jq -r '.url' $BACKPLANE_CONFIG)
+    curl --silent --connect-timeout 2 --max-time 3 --proxy "$BACKPLANE_PROXY_URL" "$BACKPLANE_URL/healthz"
+  changed_when: false
+  register: cmd_res
+  failed_when: cmd_res.stdout != "ok"
+
 - name: Login to ocm {{ env.OCM_ENVIRONMENT }}
   include_tasks: tasks/common/shell.yml
   vars:
@@ -6,19 +15,27 @@
       ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
     template_name: common/blank.md.j2
 
-- name: Get cluster describe
+- name: Lookup cluster
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Describe cluster {{ env.CLUSTER }}
+    description: Lookup cluster {{ env.CLUSTER }} id
     command: |
-      ocm describe cluster $CLUSTER --json
-    stdout_to_json: true
-    ignore_errors: true
+      ocm list cluster -p search="name='{{ env.CLUSTER }}' or id='{{ env.CLUSTER }}' or external_id='{{ env.CLUSTER }}'"  --no-headers --columns id
     template_name: common/blank.md.j2
 
 - name: Stop play if cluster is not found
   meta: end_play
-  when: ('no subscriptions or clusters' in cmd.stderr)
+  when: not cmd.stdout
+
+- name: Get cluster describe
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster {{ cmd.stdout }}
+    command: |
+      ocm describe cluster {{ cmd.stdout }} --json
+    stdout_to_json: true
+    ignore_errors: true
+    template_name: common/blank.md.j2  
 
 - name: Update env with cluster_describe, CLUSTER_ID, CLUSTER_NAME, HOSTED_CP, PRIVATELINK
   include_tasks: tasks/common/update_env.yml
@@ -29,7 +46,7 @@
       CLUSTER_UUID: '{{ cmd.json.external_id }}'
       CLUSTER_NAME: '{{ cmd.json.name }}'
       HOSTED_CP: '{{ cmd.json.hypershift.enabled }}'
-      PRIVATELINK: '{{ cmd.json.aws.private_link }}'
+      PRIVATELINK: '{{ cmd.json.aws.private_link | default(False) }}'
 
 - name: Get cluster describe
   include_tasks: tasks/common/shell.yml
@@ -46,7 +63,7 @@
       ocm get /api/service_logs/v1/clusters/cluster_logs \
       -p cluster_uuid="{{ env.CLUSTER_UUID }}" \
       -p search="timestamp > '$(date --iso-8601=seconds --utc -d '-10 days')'" \
-      | jq -r '.items[]|[.timestamp,.summary,.severity,.description]'
+      | jq -r '.items[] | [.timestamp, .severity, .summary, .description] | @tsv'
 
 - name: Get cluster provision shard
   include_tasks: tasks/common/shell.yml

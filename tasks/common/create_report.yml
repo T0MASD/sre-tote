@@ -30,5 +30,12 @@
     --css=templates/common/css/github.css \
     --highlight-style=haddock \
     --self-contained
+  register: pandoc
   changed_when: false
   when: to_html and which_pandoc.rc == 0
+
+- name: Convert markdown report to {{ markdown.dest }}.txt
+  command: >
+    pandoc -f markdown -t plain -o {{ markdown.dest }}.txt {{ markdown.dest }} \
+  changed_when: false
+  when: which_pandoc.rc == 0

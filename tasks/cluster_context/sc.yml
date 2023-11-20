@@ -13,59 +13,84 @@
 - name: "Tasks on sc"
   when: loggedin_sc
   block:
-    - name: Get project {{ env.HCP_NAMESPACE }}
+    - name: Get project ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} 
       include_tasks: tasks/common/shell.yml
       vars:
-        description: get project {{ env.HCP_NAMESPACE }}
+        description: get project ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} 
         ignore_errors: true
         command: |
-          oc get project {{ env.HCP_NAMESPACE }}
+          oc get project ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} 
 
-    - name: Get project {{ env.HCP_NAMESPACE }}
+    - name: Get events in ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} 
       include_tasks: tasks/common/shell.yml
       vars:
-        description: get {{ env.HCP_NAMESPACE }} project
-        ignore_errors: true
+        description: Get events in ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} 
         command: |
-          oc get project ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }} -o json
+          oc get events -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}  \
+          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv' 
 
-    - name: Get warning events in hcp namespace
+    - name: Get events in {{ env.CLUSTER_ID }} 
       include_tasks: tasks/common/shell.yml
       vars:
-        description: Warning events in hcp namespace
+        description: Get events in {{ env.CLUSTER_ID }} 
         command: |
-          kubectl events -n {{ env.HCP_NAMESPACE }} --types=Warning
+          oc get events -n {{ env.CLUSTER_ID }} -o json \
+          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv' 
+
+    - name: Get events in {{ env.MC_NAME }} 
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Get events in {{ env.MC_NAME }} 
+        command: |
+          oc get events -n {{ env.MC_NAME }} -o json \
+          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv' 
 
     - name: Get SC managedcluster .status.conditions
       include_tasks: tasks/common/shell.yml
       vars:
         description: SC managedcluster .status.conditions
         command: |
-          oc get managedcluster {{ env.CLUSTER_ID }} -o json | jq -r .status.conditions
+          oc get managedcluster {{ env.CLUSTER_ID }} -o json \
+          | jq -r '.status.conditions[] | [.lastTransitionTime, .status, .message ] | @tsv' 
 
-    - name: Get manifestwork resourceStatus
+    - name: Get {{ env.CLUSTER_ID }} manifestworks
       include_tasks: tasks/common/shell.yml
       vars:
-        description: Manifestwork resourceStatus
+        description: Get {{ env.CLUSTER_ID }} manifestworks
         ignore_errors: true
         command: |
-          oc get manifestwork -n {{ env.MC_NAME }} {{ env.CLUSTER_ID }} -o json | \
-          jq -r '.status.resourceStatus.manifests[]|[.resourceMeta.name,.conditions[]]'
+          oc get manifestwork -n {{ env.MC_NAME }} -o json \
+          | jq -r '.items[].metadata | select ( (.labels."api.openshift.com/id"=="{{ env.CLUSTER_ID }}") or (.labels."import.open-cluster-management.io/hosted-cluster"=="{{ env.CLUSTER_ID }}") or (.labels."open-cluster-management.io/addon-namespace"=="{{ env.CLUSTER_ID }}") ) | [.creationTimestamp, .name, (.finalizers | join(",")) ]| @tsv'
 
-    - name: Get manifestwork hosted-klusterlet resourceStatus
+    - name: Get manifestworks for namespaces containing {{ env.CLUSTER_ID }} 
       include_tasks: tasks/common/shell.yml
       vars:
-        description: Manifestwork hosted-klusterlet resourceStatus
+        description: Manifestwork names and conditions length in namespaces containing {{ env.CLUSTER_ID }}
         ignore_errors: true
         command: |
-          oc get manifestwork -n {{ env.MC_NAME }} {{ env.CLUSTER_ID }}-hosted-klusterlet -o json | \
-          jq -r '.status.resourceStatus.manifests[]|[.resourceMeta.name,.conditions[]]'
+          oc get manifestwork -n {{ env.MC_NAME }} -o json \
+          | jq -r '.items[].status.resourceStatus.manifests[] | select(.resourceMeta.namespace | contains("{{ env.CLUSTER_ID }}") ) | [.resourceMeta.namespace, .resourceMeta.kind, .resourceMeta.name, (.conditions | length)] | @tsv'
 
-    - name: Get manifestwork workers resourceStatus
+    - name: Get ssl orders for {{ env.CLUSTER_ID }}
       include_tasks: tasks/common/shell.yml
       vars:
-        description: Manifestwork workers resourceStatus
+        description: Get ssl orders for {{ env.CLUSTER_ID }}
         ignore_errors: true
         command: |
-          oc get manifestwork -n {{ env.MC_NAME }} {{ env.CLUSTER_ID }}-workers -o json | \
-          jq -r '.status.resourceStatus.manifests[].statusFeedback.values[]|[.name,.fieldValue.string]'
+          oc get orders -n openshift-acm-policies | grep {{ env.CLUSTER_ID }}
+
+    - name: Get ssl requests for {{ env.CLUSTER_ID }}
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Get ssl requests for {{ env.CLUSTER_ID }}
+        ignore_errors: true
+        command: |
+          oc get challenge -n openshift-acm-policies | grep {{ env.CLUSTER_ID }}
+
+    - name: Get policy {{ env.CLUSTER_ID }}
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Get policy {{ env.CLUSTER_ID }}
+        ignore_errors: true
+        command: |
+          oc get policy -n {{ env.CLUSTER_ID }}

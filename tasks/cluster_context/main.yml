@@ -6,7 +6,7 @@
 
 - name: Include hive queries
   include_tasks: hive.yml
-  when: env.HIVE_NAME is defined
+  when: env.HIVE_NAME is defined and env.OCM_ENVIRONMENT == 'production'
 
 - name: Include service cluster queries
   include_tasks: sc.yml

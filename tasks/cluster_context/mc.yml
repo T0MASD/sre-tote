@@ -19,7 +19,7 @@
         description: Hypershift operator logs containing cluster id
         ignore_errors: true
         command: |
-          oc logs -n hypershift -l name=operator --since 48h | grep {{ env.CLUSTER_ID }}
+          oc logs -n hypershift -l name=operator -c operator --since 48h | grep {{ env.CLUSTER_ID }}
 
     - name: Get projects with cluster id
       include_tasks: tasks/common/shell.yml
@@ -47,7 +47,8 @@
       vars:
         description: Warning events hcp namespace
         command: |
-          kubectl events -n {{ env.HCP_NAMESPACE }} --types=Warning
+          oc get events -n {{ env.HCP_NAMESPACE }} -o json \
+          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv' 
 
     - name: Get hypershift worker nodes
       include_tasks: tasks/common/shell.yml
@@ -90,7 +91,8 @@
       vars:
         description: Hostedcluster status.conditions
         command: |
-          oc get hostedcluster -n ocm-$OCM_ENVIRONMENT-$CLUSTER_ID -o json | jq -r .items[].status.conditions
+          oc get hostedcluster -n ocm-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}} -o json \
+          | jq -r '.items[].status.conditions[] | [.lastTransitionTime, .type, .message ] | @tsv'
 
     - name: Get vpcendpoints status.conditions
       include_tasks: tasks/common/shell.yml
@@ -104,7 +106,8 @@
       vars:
         description: Awsendpointservices status.conditions
         command: |
-          oc get awsendpointservices -n {{ env.HCP_NAMESPACE }} private-router -o json | jq -r .status.conditions
+          oc get awsendpointservices -n {{ env.HCP_NAMESPACE }} private-router -o json \
+          | jq -r '.status.conditions[] | [.lastTransitionTime, .type, .reason] | @tsv'
 
     - name: Get control-plane-operator logs
       include_tasks: tasks/common/shell.yml
@@ -112,10 +115,12 @@
         description: Control-plane-operator logs
         command: |
           oc logs -n {{ env.HCP_NAMESPACE }} -l app=control-plane-operator -c control-plane-operator --since=30m
+        ignore_errors: true
 
     - name: Get kube-apiserver logs
       include_tasks: tasks/common/shell.yml
       vars:
         description: Kube-apiserver logs
         command: |
-          oc logs -n {{ env.HCP_NAMESPACE }} -l app=kube-apiserver -c kube-apiserver --since=30m
+          oc logs -n {{ env.HCP_NAMESPACE }} -l app=kube-apiserver -c kube-apiserver
+        ignore_errors: true

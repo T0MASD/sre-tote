@@ -9,7 +9,7 @@
 - name: Set logged in to hive
   set_fact:
     loggedin_hive: "{{ false if cmd.rc else true }}"
-    uhc_ns: uhc-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
+    UHC_NS: uhc-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
 
 - name: "Tasks on hive"
   when: loggedin_hive
@@ -19,28 +19,28 @@
       vars:
         description: Get cluster deployment
         command: |
-          oc get clusterdeployment -n {{ uhc_ns }}
+          oc get clusterdeployment -n {{ UHC_NS }}
 
     - name: Get cluster project claim
       include_tasks: tasks/common/shell.yml
       vars:
         description: Get cluster project claim
         command: |
-          oc get projectclaim -n {{ uhc_ns }}
+          oc get projectclaim -n {{ UHC_NS }}
 
     - name: Get cluster install pod
       include_tasks: tasks/common/shell.yml
       vars:
         description: Get cluster install pod
         command: |
-          oc get pod -n {{ uhc_ns }}
+          oc get pod -n {{ UHC_NS }}
 
     - name: Get cluster clustersync
       include_tasks: "tasks/common/shell.yml"
       vars:
         description: Get clustersync
         command: |
-          oc get clustersync -n {{ uhc_ns }} -o json | jq -r .items[].status.conditions
+          oc get clustersync -n {{ UHC_NS }} -o json | jq -r .items[].status.conditions
 
     - name: Get aws-account-operator account status
       include_tasks: "tasks/common/shell.yml"
@@ -48,7 +48,7 @@
         description: Get aws-account-operator account status
         command: |
           oc get account -n aws-account-operator -o json | jq -r \
-          '.items[] | select(.spec.claimLinkNamespace=="{{ uhc_ns }}").status'
+          '.items[] | select(.spec.claimLinkNamespace=="{{ UHC_NS }}").status'
 
     - name: Get certman certificaterequest
       include_tasks: tasks/common/shell.yml
@@ -56,7 +56,7 @@
         description: Get certman certificaterequest
         ignore_errors: true
         command: |
-          oc get certificaterequest.certman.managed.openshift.io -n {{ uhc_ns }} -o json
+          oc get certificaterequest.certman.managed.openshift.io -n {{ UHC_NS }} -o json
         stdout_to_json: true
 
     - name: Get certman-operator logs
@@ -67,3 +67,12 @@
         command: |
           oc logs -n certman-operator -l name=certman-operator --tail=-1 | grep {{ env.CLUSTER_ID }}
       when: cmd.json.items['status'] is defined
+
+    - name: 
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Get machine pool
+        ignore_errors: true
+        command: |
+          oc get MachinePool -n {{ UHC_NS }} -o json | jq -r .status.conditions
+        stdout_to_json: true
