@@ -55,6 +55,13 @@
       vars:
         description: Hypershift worker nodes
         command: |
+          oc get nodepools -o wide -n ocm-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}}
+
+    - name: Get hypershift worker nodes
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Hypershift worker nodes
+        command: |
           oc get machinedeployment -o wide -n {{ env.HCP_NAMESPACE }}
 
     - name: Get aws machines
