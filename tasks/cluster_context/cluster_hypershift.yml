@@ -1,8 +1,7 @@
-- name: Attempt login to cluster sc via backplane
+- name: Attempt login to cluster {{ env.CLUSTER_ID }} via backplane
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Attempt login to cluster sc via backplane
-    ignore_errors: true
+    description: Attempt login to cluster {{ env.CLUSTER_ID }} via backplane
     command: |
       ocm-backplane login {{ env.CLUSTER_ID }}
 
@@ -30,13 +29,13 @@
     command: |
       oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
 
-- name: Get cluster alerts
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster alerts
-    ignore_errors: true
-    command: |
-      oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
+# - name: Get cluster alerts
+#   include_tasks: tasks/common/shell.yml
+#   vars:
+#     description: Cluster alerts
+#     ignore_errors: true
+#     command: |
+#       oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
 
 - name: Get cluster identityProviders
   include_tasks: tasks/common/shell.yml
