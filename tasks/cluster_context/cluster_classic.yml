@@ -1,167 +1,174 @@
-- name: Attempt login to cluster sc via backplane
+- name: Attempt login to cluster {{ env.CLUSTER_ID }} via backplane
   include_tasks: tasks/common/shell.yml
   vars:
-    description: Attempt login to cluster sc via backplane
+    description: Attempt login to cluster {{ env.CLUSTER_ID }} via backplane
     ignore_errors: true
     command: |
       ocm-backplane login {{ env.CLUSTER_ID }}
 
-- name: Get cluster nodes
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster nodes
-    ignore_errors: true
-    command: |
-      oc get nodes -o wide &&
-      echo ---------- &&
-      oc adm top nodes
+- name: Set logged in to cluster
+  set_fact:
+    loggedin_cluster: "{{ false if cmd.rc else true }}"
 
-- name: Get cluster machine information
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster machine information
-    ignore_errors: true
-    command: |
-      oc get machinesets -A -o wide
-      echo ---------- &&
-      oc get machines -A -o wide
+- name: "Tasks on hive"
+  when: loggedin_cluster
+  block:
+  - name: Get cluster nodes
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster nodes
+      ignore_errors: true
+      command: |
+        oc get nodes -o wide &&
+        echo ---------- &&
+        oc adm top nodes
 
-- name: Get cluster operators
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster operators
-    ignore_errors: true
-    command: |
-      oc get co
+  - name: Get cluster machine information
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster machine information
+      ignore_errors: true
+      command: |
+        oc get machinesets -A -o wide
+        echo ---------- &&
+        oc get machines -A -o wide
 
-- name: Get cluster degraded operators
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster degraded operators
-    ignore_errors: true
-    command: |
-      oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
+  - name: Get cluster operators
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster operators
+      ignore_errors: true
+      command: |
+        oc get co
 
-- name: Get cluster upgrade
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster upgrade status
-    ignore_errors: true
-    command: |
-      oc get upgrade -A &&
-      echo ---------- &&
-      oc get clusterversion
+  - name: Get cluster degraded operators
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster degraded operators
+      ignore_errors: true
+      command: |
+        oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
 
-- name: Get cluster alerts
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster alert status
-    ignore_errors: true
-    command: |
-      oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
+  - name: Get cluster upgrade
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster upgrade status
+      ignore_errors: true
+      command: |
+        oc get upgrade -A &&
+        echo ---------- &&
+        oc get clusterversion
 
-- name: Get cluster subjectpermission
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster subjectpermission
-    ignore_errors: true
-    command: |
-      oc get subjectpermission -n openshift-rbac-permissions
+  - name: Get cluster alerts
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster alert status
+      ignore_errors: true
+      command: |
+        oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
 
-- name: Get cluster identityProviders
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster identityProviders
-    ignore_errors: true
-    command: |
-      oc get oauth cluster -o json | jq -r .spec.identityProviders
+  - name: Get cluster subjectpermission
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster subjectpermission
+      ignore_errors: true
+      command: |
+        oc get subjectpermission -n openshift-rbac-permissions
 
-- name: Get cluster ssl issuer status
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster ssl issuer status
-    ignore_errors: true
-    command: |
-      oc get clusterissuer public-issuer -o json | jq -r .status
+  - name: Get cluster identityProviders
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster identityProviders
+      ignore_errors: true
+      command: |
+        oc get oauth cluster -o json | jq -r .spec.identityProviders
 
-- name: Get cluster networkType
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster networkType
-    ignore_errors: true
-    command: |
-      oc get Network cluster -o json | jq -r .status.networkType
+  - name: Get cluster ssl issuer status
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster ssl issuer status
+      ignore_errors: true
+      command: |
+        oc get clusterissuer public-issuer -o json | jq -r .status
 
-- name: Add NETWORKTYPE={{ cmd.stdout }} to the env
-  include_tasks: tasks/common/update_env.yml
-  vars:
-    env_updates:
-      NETWORKTYPE: '{{ cmd.stdout }}'
+  - name: Get cluster networkType
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster networkType
+      ignore_errors: true
+      command: |
+        oc get Network cluster -o json | jq -r .status.networkType
 
-- name: Get cluster network resources
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster network resources
-    ignore_errors: true
-    command: |
-      oc get all,ep,cm -n openshift-ovn-kubernetes
-  when: env.NETWORKTYPE == 'OVNKubernetes'
+  - name: Add NETWORKTYPE={{ cmd.stdout }} to the env
+    include_tasks: tasks/common/update_env.yml
+    vars:
+      env_updates:
+        NETWORKTYPE: '{{ cmd.stdout }}'
 
-- name: Get etcd pods
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Get cluster etcd pods
-    command: oc get pods -n openshift-etcd
-    ignore_errors: true
+  - name: Get cluster network resources
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster network resources
+      ignore_errors: true
+      command: |
+        oc get all,ep,cm -n openshift-ovn-kubernetes
+    when: env.NETWORKTYPE == 'OVNKubernetes'
 
-- name: Set cluster etcd pod
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Get cluster etcd pod
-    command: |
-      oc get pods -l k8s-app=etcd -n openshift-etcd \
-      -o jsonpath='{.items[*].metadata.name}' | awk '{ print $1 }'
-    ignore_errors: true
+  - name: Get etcd pods
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Get cluster etcd pods
+      command: oc get pods -n openshift-etcd
+      ignore_errors: true
 
-- name: Update env ETC_POD={{ cmd.stdout }}
-  include_tasks: tasks/common/update_env.yml
-  vars:
-    env_updates:
-      ETC_POD: '{{ cmd.stdout }}'
-  when: cmd.stdout != ''
+  - name: Set cluster etcd pod
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Get cluster etcd pod
+      command: |
+        oc get pods -l k8s-app=etcd -n openshift-etcd \
+        -o jsonpath='{.items[*].metadata.name}' | awk '{ print $1 }'
+      ignore_errors: true
 
-- name: Get {{ env.ETC_POD }} pod etcdctl endpoint status
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: etcdctl endpoint status
-    command: |
-      oc exec -it  {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl endpoint status --cluster -w table"
-    ignore_errors: true
-  when: env.ETC_POD is defined
+  - name: Update env ETC_POD={{ cmd.stdout }}
+    include_tasks: tasks/common/update_env.yml
+    vars:
+      env_updates:
+        ETC_POD: '{{ cmd.stdout }}'
+    when: cmd.stdout != ''
 
-- name: Get etcdctl endpoint health
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: etcdctl endpoint health
-    ignore_errors: true
-    command: |
-      oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl endpoint health -w table"
-  when: env.ETC_POD is defined
+  - name: Get {{ env.ETC_POD }} pod etcdctl endpoint status
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: etcdctl endpoint status
+      command: |
+        oc exec -it  {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl endpoint status --cluster -w table"
+      ignore_errors: true
+    when: env.ETC_POD is defined
 
-- name: Get etcdctl member list
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: etcdctl member list
-    ignore_errors: true
-    command: |
-      oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl member list -w table"
-  when: env.ETC_POD is defined
+  - name: Get etcdctl endpoint health
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: etcdctl endpoint health
+      ignore_errors: true
+      command: |
+        oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl endpoint health -w table"
+    when: env.ETC_POD is defined
 
-- name: Show etcd resources command
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: etcd resources command
-    command: |
-      echo oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl get / --prefix --keys-only | grep -v ^$"
-    ignore_errors: true
-  when: env.ETC_POD is defined
+  - name: Get etcdctl member list
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: etcdctl member list
+      ignore_errors: true
+      command: |
+        oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl member list -w table"
+    when: env.ETC_POD is defined
+
+  - name: Show etcd resources command
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: etcd resources command
+      command: |
+        echo oc exec -it {{ env.ETC_POD }} -n openshift-etcd -c etcdctl -- sh -c "etcdctl get / --prefix --keys-only | grep -v ^$"
+      ignore_errors: true
+    when: env.ETC_POD is defined

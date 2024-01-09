@@ -5,97 +5,104 @@
     command: |
       ocm-backplane login {{ env.CLUSTER_ID }}
 
-- name: Get cluster version
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Get cluster version
-    ignore_errors: true
-    command: |
-      oc get clusterversion
+- name: Set logged in to cluster
+  set_fact:
+    loggedin_cluster: "{{ false if cmd.rc else true }}"
 
-- name: Get cluster operators
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster operators
-    ignore_errors: true
-    command: |
-      oc get co
+- name: "Tasks on cluster"
+  when: loggedin_cluster
+  block:
+  - name: Get cluster version
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Get cluster version
+      ignore_errors: true
+      command: |
+        oc get clusterversion
 
-- name: Get cluster degraded operators
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster degraded operators
-    ignore_errors: true
-    command: |
-      oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
+  - name: Get cluster operators
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster operators
+      ignore_errors: true
+      command: |
+        oc get co
 
-# - name: Get cluster alerts
-#   include_tasks: tasks/common/shell.yml
-#   vars:
-#     description: Cluster alerts
-#     ignore_errors: true
-#     command: |
-#       oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
+  - name: Get cluster degraded operators
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster degraded operators
+      ignore_errors: true
+      command: |
+        oc get co -o json | jq -r '.items[].status | select (.conditions) '.conditions | jq -r '.[] | select( (.type == "Degraded") and (.status == "True") )'
 
-- name: Get cluster identityProviders
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster identityProviders
-    ignore_errors: true
-    command: |
-      oc get oauth cluster -o json | jq -r .spec.identityProviders
+  # - name: Get cluster alerts
+  #   include_tasks: tasks/common/shell.yml
+  #   vars:
+  #     description: Cluster alerts
+  #     ignore_errors: true
+  #     command: |
+  #       oc rsh -n openshift-monitoring alertmanager-main-0 amtool alert query --alertmanager.url http://localhost:9093 -o extended
 
-# - name: Get cluster ssl issuer status
-#   include_tasks: tasks/common/shell.yml
-#   vars:
-#     description: Cluster ssl issuer status
-#     ignore_errors: true
-#     command: |
-#       oc get clusterissuer public-issuer -o json | jq -r .status
+  - name: Get cluster identityProviders
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster identityProviders
+      ignore_errors: true
+      command: |
+        oc get oauth cluster -o json | jq -r .spec.identityProviders
 
-- name: Get cluster networkType
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster networkType
-    ignore_errors: true
-    command: |
-      oc get Network cluster -o json | jq -r .status.networkType
+  # - name: Get cluster ssl issuer status
+  #   include_tasks: tasks/common/shell.yml
+  #   vars:
+  #     description: Cluster ssl issuer status
+  #     ignore_errors: true
+  #     command: |
+  #       oc get clusterissuer public-issuer -o json | jq -r .status
 
-- name: Update env NETWORKTYPE={{ cmd.stdout }}
-  include_tasks: tasks/common/update_env.yml
-  vars:
-    env_updates:
-      NETWORKTYPE: '{{ cmd.stdout }}'
+  - name: Get cluster networkType
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster networkType
+      ignore_errors: true
+      command: |
+        oc get Network cluster -o json | jq -r .status.networkType
 
-- name: Get cluster network resources
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster network resources
-    ignore_errors: true
-    command: |
-      oc get all,ep,cm -n openshift-ovn-kubernetes
-  when: env.NETWORKTYPE == 'OVNKubernetes'
+  - name: Update env NETWORKTYPE={{ cmd.stdout }}
+    include_tasks: tasks/common/update_env.yml
+    vars:
+      env_updates:
+        NETWORKTYPE: '{{ cmd.stdout }}'
 
-- name: Get cluster dns
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Cluster dns
-    command: |
-      oc get dns cluster -o json | jq -r '[.metadata.creationTimestamp, .spec.baseDomain] | @tsv'
+  - name: Get cluster network resources
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster network resources
+      ignore_errors: true
+      command: |
+        oc get all,ep,cm -n openshift-ovn-kubernetes
+    when: env.NETWORKTYPE == 'OVNKubernetes'
 
-# - name: Get cluster ingress dnsrecords
-#   include_tasks: tasks/common/shell.yml
-#   vars:
-#     description: Cluster dns
-#     ignore_errors: true
-#     command: |
-#       oc get dnsrecords.ingress.operator.openshift.io -n openshift-ingress-operator default-wildcard -o yaml
+  - name: Get cluster dns
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster dns
+      command: |
+        oc get dns cluster -o json | jq -r '[.metadata.creationTimestamp, .spec.baseDomain] | @tsv'
+
+  # - name: Get cluster ingress dnsrecords
+  #   include_tasks: tasks/common/shell.yml
+  #   vars:
+  #     description: Cluster dns
+  #     ignore_errors: true
+  #     command: |
+  #       oc get dnsrecords.ingress.operator.openshift.io -n openshift-ingress-operator default-wildcard -o yaml
 
 
-# - name: Verify cluster webhook config url contains {{ env.CLUSTER_ID }}
-#   include_tasks: tasks/common/shell.yml
-#   vars:
-#     description: Verify cluster webhook config url contains {{ env.CLUSTER_ID }}
-#     ignore_errors: true
-#     command: |
-#       oc get validatingwebhookconfiguration sre-regular-user-validation -o json | jq -r '.webhooks[].clientConfig.url' | grep {{ env.CLUSTER_ID }}
+  # - name: Verify cluster webhook config url contains {{ env.CLUSTER_ID }}
+  #   include_tasks: tasks/common/shell.yml
+  #   vars:
+  #     description: Verify cluster webhook config url contains {{ env.CLUSTER_ID }}
+  #     ignore_errors: true
+  #     command: |
+  #       oc get validatingwebhookconfiguration sre-regular-user-validation -o json | jq -r '.webhooks[].clientConfig.url' | grep {{ env.CLUSTER_ID }}
