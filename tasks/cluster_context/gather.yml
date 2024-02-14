@@ -55,6 +55,13 @@
     command: |
       ocm describe cluster {{ env.CLUSTER_ID }}
 
+- name: Get cluster add-ons
+  include_tasks: tasks/common/shell.yml
+  vars:
+    description: Describe cluster
+    command: |
+      ocm addons cluster info {{ env.CLUSTER_UUID }}
+
 - name: Get cluster service logs
   include_tasks: tasks/common/shell.yml
   vars:
