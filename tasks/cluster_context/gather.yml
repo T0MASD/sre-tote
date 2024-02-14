@@ -60,7 +60,7 @@
   vars:
     description: Describe cluster
     command: |
-      ocm addons cluster info {{ env.CLUSTER_UUID }}
+      ocm addons cluster info {{ env.CLUSTER_UUID }} --no-color
 
 - name: Get cluster service logs
   include_tasks: tasks/common/shell.yml
