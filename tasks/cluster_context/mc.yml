@@ -48,14 +48,19 @@
         description: Warning events hcp namespace
         command: |
           oc get events -n {{ env.HCP_NAMESPACE }} -o json \
-          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv' 
+          | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv'
+
+    - name: Get hypershift certificate requests
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Hypershift certificate requests
+        command: oc get csr -o wide -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
 
     - name: Get hypershift worker nodes
       include_tasks: tasks/common/shell.yml
       vars:
         description: Hypershift worker nodes
-        command: |
-          oc get nodepools -o wide -n ocm-{{env.OCM_ENVIRONMENT}}-{{env.CLUSTER_ID}}
+        command: oc get nodepools -o wide -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
 
     - name: Get hypershift worker nodes
       include_tasks: tasks/common/shell.yml

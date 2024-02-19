@@ -33,6 +33,12 @@
         echo ---------- &&
         oc get machines -A -o wide
 
+  - name: Get cluster certificate requests
+    include_tasks: tasks/common/shell.yml
+    vars:
+      description: Cluster certificate requests
+      command: oc get csr -A
+
   - name: Get cluster operators
     include_tasks: tasks/common/shell.yml
     vars:
