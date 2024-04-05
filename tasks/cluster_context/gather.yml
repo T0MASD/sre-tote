@@ -8,9 +8,11 @@
 
 - name: Check backplane health
   shell: |
-    BACKPLANE_PROXY_URL=$(jq -r '."proxy-url"' $BACKPLANE_CONFIG)
+    BACKPLANE_CONFIG_DIR="$HOME/.config/backplane"
+    BACKPLANE_CONFIG="$BACKPLANE_CONFIG_DIR/config.json"
+    PROXY_URL=$(jq -r '."proxy-url"' $BACKPLANE_CONFIG)
     BACKPLANE_URL=$(ocm get /api/clusters_mgmt/v1/environment | jq -r .backplane_url)
-    curl --silent --connect-timeout 2 --max-time 3 --proxy "$BACKPLANE_PROXY_URL" "$BACKPLANE_URL/healthz"
+    curl --connect-timeout 2 --max-time 3 --proxy "$PROXY_URL" "$BACKPLANE_URL/healthz"
   changed_when: false
   register: cmd_res
   failed_when: cmd_res.stdout != "ok"
