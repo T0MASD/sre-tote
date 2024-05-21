@@ -50,11 +50,23 @@
           oc get events -n {{ env.HCP_NAMESPACE }} -o json \
           | jq -r '.items[] | [.lastTimestamp, .count, .reason, .message] | @tsv'
 
-    - name: Get hypershift certificate requests
+    - name: Get MC certificate requests
       include_tasks: tasks/common/shell.yml
       vars:
-        description: Hypershift certificate requests
-        command: oc get csr -o wide -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
+        description: MC certificate requests
+        command: oc get csr -o wide
+
+    - name: Get cluster certificate requests
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Cluster certificate requests
+        command: oc get certificaterequest -o wide -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
+
+    - name: Get cluster certificates
+      include_tasks: tasks/common/shell.yml
+      vars:
+        description: Cluster certificates
+        command: oc get certificate -o wide -n ocm-{{ env.OCM_ENVIRONMENT }}-{{ env.CLUSTER_ID }}
 
     - name: Get hypershift worker nodes
       include_tasks: tasks/common/shell.yml
