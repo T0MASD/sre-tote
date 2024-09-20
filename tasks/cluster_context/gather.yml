@@ -1,11 +1,3 @@
-- name: Login to ocm {{ env.OCM_ENVIRONMENT }}
-  include_tasks: tasks/common/shell.yml
-  vars:
-    description: Login to ocm {{ env.OCM_ENVIRONMENT }}
-    command: |
-      ocm login --token=$OFFLINE_ACCESS_TOKEN --url=$OCM_ENVIRONMENT
-    template_name: common/blank.md.j2
-
 - name: Check backplane health
   shell: |
     BACKPLANE_CONFIG_DIR="$HOME/.config/backplane"
