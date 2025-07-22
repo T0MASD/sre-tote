@@ -36,6 +36,7 @@
   - name: Get cluster certificate requests
     include_tasks: tasks/common/shell.yml
     vars:
+      ignore_errors: true
       description: Cluster certificate requests
       command: oc get csr -A
 
