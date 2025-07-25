@@ -2,7 +2,7 @@
   shell: |
     BACKPLANE_CONFIG_DIR="$HOME/.config/backplane"
     BACKPLANE_CONFIG="$BACKPLANE_CONFIG_DIR/config.json"
-    PROXY_URL=$(jq -r '."proxy-url"' $BACKPLANE_CONFIG)
+    PROXY_URL=$(jq -r '."proxy-url" | if type == "array" then .[0] else . end' $BACKPLANE_CONFIG)
     BACKPLANE_URL=$(ocm get /api/clusters_mgmt/v1/environment | jq -r .backplane_url)
     curl --connect-timeout 2 --max-time 3 --proxy "$PROXY_URL" "$BACKPLANE_URL/healthz"
   changed_when: false
